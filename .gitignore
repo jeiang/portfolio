@@ -1,0 +1,14 @@
+# Claude / Cowork working files
+CLAUDE.md
+.claude/
+.cowork/
+*.session
+
+# Deployment / infrastructure (kept private)
+deploy.sh
+k8s/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp

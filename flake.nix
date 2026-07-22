@@ -12,7 +12,7 @@
       site = system:
         (pkgsFor system).stdenvNoCC.mkDerivation {
           pname = "portfolio";
-          version = "1.0.0";
+          version = "1.0.1";
 
           src = ./.;
 

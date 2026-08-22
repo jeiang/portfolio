@@ -17,10 +17,20 @@
       forAllSystems = f: lib.genAttrs supportedSystems (system: f nixpkgs.legacyPackages.${system});
     in
     {
-      packages = forAllSystems (pkgs: rec {
-        portfolio = pkgs.callPackage ./nix/package.nix { };
-        default = portfolio;
-      });
+      packages = forAllSystems (
+        pkgs:
+        {
+          portfolio = pkgs.callPackage ./nix/package.nix { };
+          default = self.packages.${pkgs.stdenv.hostPlatform.system}.portfolio;
+        }
+        # The image is the escape hatch if this ever leaves NixOS, so it is
+        # built only for the one architecture anything would plausibly run on.
+        // lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "x86_64-linux") {
+          container = pkgs.callPackage ./nix/container.nix {
+            portfolio = self.packages.${pkgs.stdenv.hostPlatform.system}.portfolio;
+          };
+        }
+      );
 
       overlays.default = final: _prev: {
         portfolio = final.callPackage ./nix/package.nix { };

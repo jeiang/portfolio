@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import { getConfig } from "./config.ts";
 import { migrate } from "./migrate.ts";
 import init001 from "../migrations/001_init.sql?raw";
+import summary002 from "../migrations/002_summary.sql?raw";
 
 /**
  * Migrations are `.sql` files imported with Vite's `?raw` so they stay
@@ -13,7 +14,7 @@ import init001 from "../migrations/001_init.sql?raw";
  *
  * Append only. An entry's index is its version.
  */
-export const MIGRATIONS: readonly string[] = [init001];
+export const MIGRATIONS: readonly string[] = [init001, summary002];
 
 let db: DatabaseSync | undefined;
 

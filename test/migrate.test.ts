@@ -52,3 +52,26 @@ test("a failed migration rolls back and leaves the version alone", () => {
   assert.equal(version(db), 1);
   assert.throws(() => db.prepare("SELECT 1 FROM ok").get());
 });
+
+test("the summary migration is additive and applies on top of the initial schema", () => {
+  const db = new DatabaseSync(":memory:");
+  const summary = readFileSync(
+    new URL("../src/migrations/002_summary.sql", import.meta.url),
+    "utf8",
+  );
+
+  // Applied in two runs, as an existing deployment would see it.
+  migrate(db, [init]);
+  db.prepare(
+    "INSERT INTO posts (slug, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
+  ).run("existing", "Existing", 1, 1);
+
+  assert.equal(migrate(db, [init, summary]), 1);
+  assert.equal(version(db), 2);
+
+  // The pre-existing row survives and gets the column's default.
+  const row = db
+    .prepare("SELECT title, summary FROM posts WHERE slug = ?")
+    .get("existing");
+  assert.deepEqual({ ...row }, { title: "Existing", summary: "" });
+});

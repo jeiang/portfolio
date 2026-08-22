@@ -2,19 +2,29 @@ import { getDb, now } from "./db.ts";
 import { excerptFrom, renderMarkdown } from "./markdown.ts";
 import { slugify, uniqueSlug } from "./slug.ts";
 
-export interface Post {
+/** Everything a list view or a feed needs. Deliberately excludes the bodies. */
+export interface PostSummary {
   id: number;
   slug: string;
   title: string;
-  body_md: string;
-  body_html: string;
-  excerpt: string | null;
+  summary: string;
   cover_image: string | null;
   status: "draft" | "published";
   published_at: number | null;
-  created_at: number;
   updated_at: number;
 }
+
+export interface Post extends PostSummary {
+  body_md: string;
+  body_html: string;
+  excerpt: string | null;
+  created_at: number;
+}
+
+// Listing a post costs a few hundred bytes; selecting * costs its entire
+// rendered body, times however many posts are on the page.
+const SUMMARY_COLUMNS =
+  "id, slug, title, summary, cover_image, status, published_at, updated_at";
 
 /**
  * Published *and* due: a published_at in the future keeps a post out of the
@@ -24,12 +34,15 @@ export interface Post {
 const PUBLIC_WHERE =
   "status = 'published' AND published_at IS NOT NULL AND published_at <= ?";
 
-export function listPublished(limit = 50): Post[] {
+export function listPublished(limit = 50): PostSummary[] {
   return getDb()
     .prepare(
-      `SELECT * FROM posts WHERE ${PUBLIC_WHERE} ORDER BY published_at DESC LIMIT ?`,
+      `SELECT ${SUMMARY_COLUMNS} FROM posts
+        WHERE ${PUBLIC_WHERE}
+        ORDER BY published_at DESC
+        LIMIT ?`,
     )
-    .all(now(), limit) as unknown as Post[];
+    .all(now(), limit) as unknown as PostSummary[];
 }
 
 export function getPublishedBySlug(slug: string): Post | undefined {
@@ -38,10 +51,13 @@ export function getPublishedBySlug(slug: string): Post | undefined {
     .get(slug, now()) as unknown as Post | undefined;
 }
 
-export function listAll(): Post[] {
+export function listAll(): PostSummary[] {
   return getDb()
-    .prepare("SELECT * FROM posts ORDER BY COALESCE(published_at, updated_at) DESC")
-    .all() as unknown as Post[];
+    .prepare(
+      `SELECT ${SUMMARY_COLUMNS} FROM posts
+        ORDER BY COALESCE(published_at, updated_at) DESC`,
+    )
+    .all() as unknown as PostSummary[];
 }
 
 export function getById(id: number): Post | undefined {
@@ -85,6 +101,8 @@ export async function savePost(id: number, input: PostInput): Promise<Post> {
   const slug = uniqueSlug(requested, (candidate) => slugTaken(candidate, id));
   const html = await renderMarkdown(input.body_md);
   const excerpt = input.excerpt?.trim() || null;
+  // Derived once here so no read path ever parses markdown.
+  const summary = excerpt ?? excerptFrom(input.body_md);
 
   // Publishing stamps a time only if the author has not chosen one; a future
   // value is preserved so scheduling survives a re-save.
@@ -95,7 +113,8 @@ export async function savePost(id: number, input: PostInput): Promise<Post> {
     .prepare(
       `UPDATE posts
           SET slug = ?, title = ?, body_md = ?, body_html = ?, excerpt = ?,
-              cover_image = ?, status = ?, published_at = ?, updated_at = ?
+              summary = ?, cover_image = ?, status = ?, published_at = ?,
+              updated_at = ?
         WHERE id = ?`,
     )
     .run(
@@ -104,6 +123,7 @@ export async function savePost(id: number, input: PostInput): Promise<Post> {
       input.body_md,
       html,
       excerpt,
+      summary,
       input.cover_image,
       input.status,
       publishedAt,
@@ -118,5 +138,4 @@ export function deletePost(id: number): void {
   getDb().prepare("DELETE FROM posts WHERE id = ?").run(id);
 }
 
-export const summaryOf = (post: Post): string =>
-  post.excerpt ?? excerptFrom(post.body_md);
+export const summaryOf = (post: PostSummary): string => post.summary;

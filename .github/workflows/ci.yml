@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      # Runs the unit tests, the nix lint, the package build, and the NixOS
+      # VM test. The VM test is why this job is on Linux: it needs KVM, which
+      # GitHub's Linux runners provide and macOS runners do not.
+      - run: nix flake check --print-build-logs
+
+  image:
+    needs: check
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build image
+        run: nix build .#container --print-build-logs
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The image is the escape hatch if this ever leaves NixOS; the NixOS
+      # module is the actual deployment.
+      - name: Push
+        run: |
+          image="ghcr.io/${{ github.repository_owner }}/portfolio"
+          docker load < result
+          loaded="$(docker images --format '{{.Repository}}:{{.Tag}}' | head -n1)"
+
+          docker tag "$loaded" "$image:${GITHUB_SHA::12}"
+          docker push "$image:${GITHUB_SHA::12}"
+
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            docker tag "$loaded" "$image:latest"
+            docker push "$image:latest"
+          fi
+
+          if [ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]; then
+            docker tag "$loaded" "$image:${GITHUB_REF#refs/tags/}"
+            docker push "$image:${GITHUB_REF#refs/tags/}"
+          fi

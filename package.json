@@ -1,0 +1,50 @@
+{
+  "name": "portfolio",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "start": "node ./bin/serve.mjs",
+    "check": "astro check",
+    "test": "node --test 'test/*.test.ts'"
+  },
+  "bin": {
+    "portfolio-hash-password": "./bin/hash-password.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.4",
+    "@astrojs/rss": "^4.0.19",
+    "@shikijs/rehype": "^4.4.3",
+    "astro": "^7.2.4",
+    "github-slugger": "^2.0.0",
+    "rehype-raw": "^7.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "shiki": "^4.4.3",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@milkdown/crepe": "^7.22.1",
+    "@types/node": "^26.2.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^6.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ],
+    "ignoredOptionalDependencies": [
+      "sharp"
+    ]
+  }
+}

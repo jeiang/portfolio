@@ -26,6 +26,17 @@
         portfolio = final.callPackage ./nix/package.nix { };
       };
 
+      # Wrapped so the module's `package` default comes from this flake:
+      # importing it does not require also applying the overlay.
+      nixosModules.default =
+        { pkgs, ... }:
+        {
+          imports = [ ./nix/module.nix ];
+          services.portfolio.package =
+            lib.mkDefault
+              self.packages.${pkgs.stdenv.hostPlatform.system}.portfolio;
+        };
+
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = [

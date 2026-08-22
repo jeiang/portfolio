@@ -89,6 +89,10 @@
                 touch $out
               '';
         }
+        # nixosTest needs a VM, so it exists only where one can boot.
+        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          module = pkgs.callPackage ./nix/test.nix { module = self.nixosModules.default; };
+        }
       );
 
       formatter = forAllSystems (pkgs: pkgs.nixfmt-tree);

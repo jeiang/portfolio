@@ -8,6 +8,8 @@ CLAUDE.md
 node_modules/
 dist/
 .astro/
+result
+result-*
 
 # Local development state (SQLite database, uploads, dev secrets)
 .data/

@@ -1,0 +1,59 @@
+---
+import Admin from "../../layouts/Admin.astro";
+import { getConfig } from "../../lib/config.ts";
+import { formatDate } from "../../lib/format.ts";
+import { listAll } from "../../lib/posts.ts";
+
+const { blogUrl } = getConfig();
+const posts = listAll();
+---
+
+<Admin title="Posts">
+  <main class="admin">
+    <div class="admin-bar">
+      <h1>Posts</h1>
+      <div class="admin-actions">
+        <form method="post" action="/api/posts">
+          <button class="button-primary" type="submit">New post</button>
+        </form>
+        <form method="post" action="/api/logout">
+          <button type="submit">Sign out</button>
+        </form>
+      </div>
+    </div>
+
+    {
+      posts.length === 0 ? (
+        <p class="hint">No posts yet.</p>
+      ) : (
+        <div class="admin-list">
+          {posts.map((post) => (
+            <div class="admin-row">
+              <div class="admin-row-title">
+                <a href={`/admin/${post.id}`}>{post.title}</a>
+                <div class="admin-row-meta">
+                  /{post.slug} · {formatDate(post.published_at ?? post.updated_at)}
+                </div>
+              </div>
+              <span
+                class={`badge ${post.status === "published" ? "badge-published" : ""}`}
+              >
+                {post.status}
+              </span>
+              {post.status === "published" && (
+                <a
+                  class="button"
+                  href={`${blogUrl}/${post.slug}`}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  View
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    }
+  </main>
+</Admin>

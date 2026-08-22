@@ -4,9 +4,15 @@ CLAUDE.md
 .cowork/
 *.session
 
-# Deployment / infrastructure (kept private)
-deploy.sh
-k8s/
+# Build output and dependencies
+node_modules/
+dist/
+.astro/
+result
+result-*
+
+# Local development state (SQLite database, uploads, dev secrets)
+.data/
 
 # OS / editor cruft
 .DS_Store

@@ -8,7 +8,9 @@
 
   // Fallback: if IntersectionObserver is unavailable, show everything.
   if (!("IntersectionObserver" in window)) {
-    reveals.forEach(function (el) { el.classList.add("visible"); });
+    reveals.forEach(function (el) {
+      el.classList.add("visible");
+    });
     return;
   }
 
@@ -21,8 +23,10 @@
         }
       });
     },
-    { threshold: 0.15, rootMargin: "0px 0px -5% 0px" }
+    { threshold: 0.15, rootMargin: "0px 0px -5% 0px" },
   );
 
-  reveals.forEach(function (el) { observer.observe(el); });
+  reveals.forEach(function (el) {
+    observer.observe(el);
+  });
 })();

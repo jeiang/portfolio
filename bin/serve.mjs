@@ -1,0 +1,38 @@
+#!/usr/bin/env node
+// Launcher for the standalone Astro server.
+//
+// Two jobs the adapter cannot do itself:
+//   1. @astrojs/node reads the generic HOST/PORT, so the prefixed names are
+//      translated here rather than leaking two conventions into the NixOS
+//      module.
+//   2. Required configuration is checked before the socket opens, so a
+//      missing secret is a startup failure in the journal instead of a 500
+//      on the first request.
+import { readFileSync } from "node:fs";
+
+// Same rule as src/lib/config.ts, duplicated because this file runs before
+// (and outside) the bundle it launches.
+function cfg(name) {
+  const file = process.env[`${name}_FILE`];
+  const value = file ? readFileSync(file, "utf8") : process.env[name];
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+const missing = [
+  "PORTFOLIO_SITE_URL",
+  "PORTFOLIO_BLOG_URL",
+  "PORTFOLIO_ADMIN_PASSWORD_HASH",
+].filter((name) => cfg(name) === undefined);
+
+if (missing.length > 0) {
+  process.stderr.write(
+    `missing required configuration: ${missing.map((n) => `${n} (or ${n}_FILE)`).join(", ")}\n`,
+  );
+  process.exit(78); // EX_CONFIG
+}
+
+process.env.HOST = cfg("PORTFOLIO_HOST") ?? "127.0.0.1";
+process.env.PORT = cfg("PORTFOLIO_PORT") ?? "4321";
+
+await import("../dist/server/entry.mjs");

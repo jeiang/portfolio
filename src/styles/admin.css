@@ -1,0 +1,214 @@
+/* Admin surfaces. Loaded only on /admin, so none of this reaches a reader. */
+
+.admin {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+
+.admin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.admin-bar h1 {
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+button,
+.button {
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button:hover,
+.button:hover {
+  border-color: var(--border-strong);
+}
+
+.button-primary {
+  border-color: var(--border-strong);
+  background: var(--accent);
+  color: #2b2340;
+  font-weight: 600;
+}
+
+.button-danger {
+  color: #b3261e;
+}
+
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.admin-row-title {
+  flex: 1;
+  min-width: 0;
+}
+.admin-row-title a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+}
+.admin-row-title a:hover {
+  color: var(--accent);
+}
+.admin-row-meta {
+  font-size: 0.82rem;
+  color: var(--text-faint);
+  margin-top: 0.15rem;
+}
+
+.badge {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.badge-published {
+  border-color: var(--accent-4);
+  color: var(--text-muted);
+}
+
+/* --- Forms --------------------------------------------------- */
+
+.field {
+  display: block;
+  margin-bottom: 1rem;
+}
+.field > span {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="datetime-local"],
+textarea,
+select {
+  font: inherit;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 1px;
+}
+
+.field-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.field-row > .field {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.login {
+  max-width: 22rem;
+  margin: 18vh auto 0;
+  padding: 0 1.5rem;
+}
+
+.error {
+  color: #b3261e;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  margin-top: 0.35rem;
+}
+
+/* --- Editor -------------------------------------------------- */
+
+.editor-shell {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  overflow: hidden;
+  min-height: 60vh;
+}
+
+.editor-shell .milkdown {
+  min-height: 60vh;
+}
+
+#editor-source {
+  display: none;
+  width: 100%;
+  min-height: 60vh;
+  border: 0;
+  border-radius: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.editor-shell[data-mode="source"] #editor-wysiwyg {
+  display: none;
+}
+.editor-shell[data-mode="source"] #editor-source {
+  display: block;
+}
+
+.cover-preview {
+  max-width: 240px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.status-line {
+  font-size: 0.82rem;
+  color: var(--text-faint);
+  min-height: 1.2em;
+}

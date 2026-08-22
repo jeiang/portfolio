@@ -1,0 +1,44 @@
+---
+import "../styles/global.css";
+import "../styles/blog.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  canonical?: string;
+  image?: string;
+  type?: "website" | "article";
+}
+
+const {
+  title,
+  description = "Joshua Noel, a developer in Trinidad, West Indies. I build practical software: tools, automations, and the infrastructure that keeps them running.",
+  canonical,
+  image,
+  type = "website",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    {canonical && <link rel="canonical" href={canonical} />}
+
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={type} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    {image && <meta property="og:image" content={image} />}
+    <meta name="twitter:card" content={image ? "summary_large_image" : "summary"} />
+  </head>
+  <body>
+    <slot />
+    <script>
+      import "../scripts/reveal.js";
+    </script>
+  </body>
+</html>

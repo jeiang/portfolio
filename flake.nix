@@ -4,7 +4,7 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs =
-    { nixpkgs, ... }:
+    { self, nixpkgs }:
     let
       inherit (nixpkgs) lib;
 
@@ -17,6 +17,15 @@
       forAllSystems = f: lib.genAttrs supportedSystems (system: f nixpkgs.legacyPackages.${system});
     in
     {
+      packages = forAllSystems (pkgs: rec {
+        portfolio = pkgs.callPackage ./nix/package.nix { };
+        default = portfolio;
+      });
+
+      overlays.default = final: _prev: {
+        portfolio = final.callPackage ./nix/package.nix { };
+      };
+
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = [
@@ -30,6 +39,36 @@
           ];
         };
       });
+
+      checks = forAllSystems (
+        pkgs:
+        let
+          system = pkgs.stdenv.hostPlatform.system;
+        in
+        {
+          package = self.packages.${system}.portfolio;
+
+          lint =
+            pkgs.runCommand "lint"
+              {
+                nativeBuildInputs = with pkgs; [
+                  statix
+                  deadnix
+                ];
+              }
+              ''
+                cd ${
+                  lib.fileset.toSource {
+                    root = ./.;
+                    fileset = lib.fileset.fileFilter (f: f.hasExt "nix") ./.;
+                  }
+                }
+                statix check .
+                deadnix --fail .
+                touch $out
+              '';
+        }
+      );
 
       formatter = forAllSystems (pkgs: pkgs.nixfmt-tree);
     };

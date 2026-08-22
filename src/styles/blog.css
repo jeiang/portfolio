@@ -1,0 +1,234 @@
+/* ============================================================
+   Blog surfaces. Everything here inherits the tokens defined at
+   the top of global.css -- no second palette, no webfonts.
+   ============================================================ */
+
+/* --- Writing panel on the homepage -------------------------- */
+
+.panel-writing {
+  gap: 1.5rem;
+}
+
+.cards-writing {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 760px) {
+  .cards-writing {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card-post {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.card-date {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.card-post h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0.45rem;
+}
+
+.writing-all {
+  display: inline-block;
+  margin-top: 1.5rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-strong);
+  padding-bottom: 2px;
+}
+
+.writing-all:hover {
+  color: var(--text);
+}
+
+/* --- Blog chrome -------------------------------------------- */
+
+/* The main site has no nav bar; that restraint is the design. The blog
+   gets a name and a way home, and nothing else. */
+.blog-header {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 0;
+}
+
+.blog-header a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.blog-header a:hover {
+  color: var(--text);
+}
+
+.blog-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 6rem;
+}
+
+.blog-main > h1 {
+  font-size: clamp(1.9rem, 5vw, 2.6rem);
+  letter-spacing: -0.02em;
+  margin-bottom: 2rem;
+}
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.post-list .card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.post-empty {
+  color: var(--text-muted);
+}
+
+/* --- Article ------------------------------------------------ */
+
+.post-header {
+  margin-bottom: 2.5rem;
+}
+
+.post-header h1 {
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.post-cover {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 2rem;
+}
+
+/* Long-form gets the serif already defined in global.css: it reads better
+   and separates writing from site chrome without another font request. */
+.prose {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  line-height: 1.75;
+  color: var(--text);
+}
+
+.prose > * + * {
+  margin-top: 1.25rem;
+}
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font);
+  letter-spacing: -0.02em;
+  margin-top: 2.5rem;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0;
+}
+.prose h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0;
+}
+
+.prose a {
+  color: var(--text);
+  text-decoration-color: var(--border-strong);
+}
+.prose a:hover {
+  color: var(--accent);
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.prose blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.4rem;
+}
+.prose li + li {
+  margin-top: 0.4rem;
+}
+
+.prose code {
+  font-size: 0.9em;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+
+.prose pre {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font);
+  font-size: 0.95rem;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+}
+
+/* Shiki runs with defaultColor:false, so each token carries both palettes
+   as custom properties and the existing prefers-color-scheme block picks
+   one. One stylesheet, no theme toggle, no flash. */
+.prose .shiki,
+.prose .shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .prose .shiki,
+  .prose .shiki span {
+    color: var(--shiki-dark);
+    background-color: var(--shiki-dark-bg);
+  }
+}

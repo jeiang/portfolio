@@ -38,9 +38,21 @@ testers.runNixOSTest {
         assert "Joshua Noel" in curl("http://127.0.0.1:4321/")
         assert "Nothing published yet" in curl("http://127.0.0.1:4321/", host="blog.test")
 
+    with subtest("starts without logging errors"):
+        machine.fail("journalctl -u portfolio.service --grep 'ERR_SYSTEM_ERROR|Error:'")
+
     with subtest("the database landed in the state directory"):
         machine.succeed("test -f /var/lib/portfolio/portfolio.db")
         machine.succeed("test $(stat -c %U /var/lib/portfolio/portfolio.db) = portfolio")
+
+    with subtest("the heap is capped below the unit's memory ceiling"):
+        # Left uncapped, V8 sizes its heap against the host's total memory
+        # and walks straight through MemoryMax.
+        machine.succeed("systemctl show portfolio.service -p MemoryMax | grep -q 805306368")
+        pid = machine.succeed("systemctl show -p MainPID --value portfolio.service").strip()
+        machine.succeed(
+            f"tr '\\0' '\\n' < /proc/{pid}/environ | grep -q -- '--max-old-space-size=384'"
+        )
 
     with subtest("rejects the wrong password"):
         out = machine.succeed(

@@ -92,10 +92,18 @@ in
       '';
     };
 
-    memoryMax = lib.mkOption {
-      type = lib.types.str;
-      default = "512M";
-      description = "systemd MemoryMax for the unit.";
+    memoryMaxMB = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 768;
+      description = ''
+        Memory ceiling for the unit, in MiB. V8's heap is capped at half of
+        it.
+
+        Measured at 50 concurrent requests: an uncapped heap peaked around
+        820 MiB, which this limit would kill. A 384 MiB heap peaked around
+        475 MiB and cost about 2% throughput; 192 MiB peaked around 390 MiB
+        but cost 14-26%.
+      '';
     };
   };
 
@@ -138,6 +146,12 @@ in
         # LoadCredential below.
         PORTFOLIO_ADMIN_PASSWORD_HASH_FILE = "%d/admin-password-hash";
         NODE_ENV = "production";
+
+        # V8 sizes its heap against total system memory, not the cgroup it
+        # is in, so on a large host it grows straight past MemoryMax and
+        # gets the service OOM-killed. Half the ceiling leaves room for the
+        # ~120 MiB baseline and off-heap buffers.
+        NODE_OPTIONS = "--max-old-space-size=${toString (cfg.memoryMaxMB / 2)}";
       };
 
       serviceConfig = {
@@ -169,6 +183,10 @@ in
           "AF_INET"
           "AF_INET6"
           "AF_UNIX"
+          # libuv enumerates interfaces over netlink at startup. Without
+          # this the service still works, but logs an EAFNOSUPPORT error on
+          # every boot -- and a journal that cries wolf gets ignored.
+          "AF_NETLINK"
         ];
         RestrictNamespaces = true;
         RestrictRealtime = true;
@@ -185,7 +203,7 @@ in
         # stops the service from starting at all.
         MemoryDenyWriteExecute = false;
 
-        MemoryMax = cfg.memoryMax;
+        MemoryMax = "${toString cfg.memoryMaxMB}M";
       };
     };
   };

@@ -29,6 +29,10 @@ dockerTools.buildLayeredImage {
       # Reachable from outside the container, unlike the NixOS default.
       "PORTFOLIO_HOST=0.0.0.0"
       "PORTFOLIO_STATE_DIR=/var/lib/portfolio"
+      # Same reason as the NixOS module: V8 sizes its heap against the host,
+      # not the container's limit, and grows past it. Override alongside the
+      # orchestrator's own memory limit.
+      "NODE_OPTIONS=--max-old-space-size=384"
     ];
   };
 }

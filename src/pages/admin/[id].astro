@@ -1,0 +1,109 @@
+---
+import Admin from "../../layouts/Admin.astro";
+import { getConfig } from "../../lib/config.ts";
+import { toDatetimeLocal } from "../../lib/format.ts";
+import { getById } from "../../lib/posts.ts";
+
+const { blogUrl } = getConfig();
+const id = Number(Astro.params.id);
+const post = Number.isInteger(id) ? getById(id) : undefined;
+
+if (!post) return Astro.redirect("/admin", 303);
+---
+
+<Admin title={`Edit · ${post.title}`}>
+  <main class="admin">
+    <div class="admin-bar">
+      <h1>Edit post</h1>
+      <div class="admin-actions">
+        <span class="status-line" id="status-line"></span>
+        <button type="button" id="toggle-source">Markdown</button>
+        <button type="button" class="button-danger" id="delete">Delete</button>
+        <button type="button" class="button-primary" id="save">Save</button>
+        <a class="button" href="/admin">Back</a>
+      </div>
+    </div>
+
+    <label class="field">
+      <span>Title</span>
+      <input type="text" id="title" value={post.title} />
+    </label>
+
+    <div class="field-row">
+      <label class="field">
+        <span>Slug</span>
+        <input type="text" id="slug" value={post.slug} />
+        {
+          post.status === "published" && (
+            <span class="hint">
+              Published at {blogUrl}/{post.slug} — changing this breaks every existing
+              link to it.
+            </span>
+          )
+        }
+      </label>
+
+      <label class="field">
+        <span>Status</span>
+        <select id="status">
+          <option value="draft" selected={post.status === "draft"}>Draft</option>
+          <option value="published" selected={post.status === "published"}
+            >Published</option
+          >
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Publish date (UTC)</span>
+        <input
+          type="datetime-local"
+          id="published-at"
+          value={toDatetimeLocal(post.published_at)}
+        />
+        <span class="hint">A future date schedules the post.</span>
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Excerpt</span>
+      <textarea id="excerpt" rows="2">{post.excerpt ?? ""}</textarea>
+      <span class="hint">Optional. Falls back to the first 160 characters.</span>
+    </label>
+
+    <div class="field">
+      <span>Cover image</span>
+      <div class="admin-actions">
+        <input type="file" id="cover-file" accept="image/*" hidden />
+        <button type="button" id="cover-pick">Choose image</button>
+        <button type="button" id="cover-clear">Remove</button>
+      </div>
+      <img
+        class="cover-preview"
+        id="cover-preview"
+        src={post.cover_image ? `/uploads/${post.cover_image}` : ""}
+        alt=""
+        hidden={!post.cover_image}
+      />
+    </div>
+
+    <div class="editor-shell" id="editor-shell" data-mode="wysiwyg">
+      <div id="editor-wysiwyg"></div>
+      <textarea id="editor-source" spellcheck="false"></textarea>
+    </div>
+
+    <script
+      is:inline
+      type="application/json"
+      id="post-data"
+      set:html={JSON.stringify({
+        id: post.id,
+        body_md: post.body_md,
+        cover_image: post.cover_image,
+      })}
+    />
+
+    <script>
+      import "../../scripts/editor.ts";
+    </script>
+  </main>
+</Admin>

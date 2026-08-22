@@ -1,0 +1,57 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getConfig } from "../../lib/config.ts";
+import { formatDate, isoDate } from "../../lib/format.ts";
+import { getPublishedBySlug, summaryOf } from "../../lib/posts.ts";
+
+const { blogUrl, siteUrl } = getConfig();
+const { slug } = Astro.params;
+const post = slug ? getPublishedBySlug(slug) : undefined;
+
+// Rendering a 404 in place rather than rewriting: a rewrite re-enters the
+// middleware, which would map the host again.
+if (!post) Astro.response.status = 404;
+
+const canonical = post ? `${blogUrl}/${post.slug}` : undefined;
+const cover = post?.cover_image ? `${blogUrl}/uploads/${post.cover_image}` : undefined;
+---
+
+<Base
+  title={post ? `${post.title} · Joshua Noel` : "Not found · Joshua Noel"}
+  description={post ? summaryOf(post) : "That post does not exist."}
+  canonical={canonical}
+  image={cover}
+  type={post ? "article" : "website"}
+>
+  <header class="blog-header"><a href={siteUrl}>Joshua Noel</a></header>
+
+  <main class="blog-main">
+    {
+      post ? (
+        <article>
+          <div class="post-header">
+            <span class="card-date">
+              <time datetime={isoDate(post.published_at)}>
+                {formatDate(post.published_at)}
+              </time>
+            </span>
+            <h1>{post.title}</h1>
+          </div>
+
+          {post.cover_image && (
+            <img class="post-cover" src={`/uploads/${post.cover_image}`} alt="" />
+          )}
+
+          <div class="prose" set:html={post.body_html} />
+        </article>
+      ) : (
+        <>
+          <h1>Not found</h1>
+          <p class="post-empty">
+            That post does not exist. <a href="/">Back to writing</a>.
+          </p>
+        </>
+      )
+    }
+  </main>
+</Base>

@@ -1,0 +1,41 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getConfig } from "../../lib/config.ts";
+import { formatDate, isoDate } from "../../lib/format.ts";
+import { listPublished, summaryOf } from "../../lib/posts.ts";
+
+const { blogUrl, siteUrl } = getConfig();
+const posts = listPublished();
+---
+
+<Base
+  title="Writing · Joshua Noel"
+  description="Notes on the things I build, and the problems that made me build them."
+  canonical={blogUrl}
+>
+  <header class="blog-header"><a href={siteUrl}>Joshua Noel</a></header>
+
+  <main class="blog-main">
+    <h1>Writing</h1>
+
+    {
+      posts.length === 0 ? (
+        <p class="post-empty">Nothing published yet.</p>
+      ) : (
+        <div class="post-list">
+          {posts.map((post) => (
+            <a class="card reveal" href={`/${post.slug}`}>
+              <span class="card-date">
+                <time datetime={isoDate(post.published_at)}>
+                  {formatDate(post.published_at)}
+                </time>
+              </span>
+              <h3>{post.title}</h3>
+              <p>{summaryOf(post)}</p>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </main>
+</Base>

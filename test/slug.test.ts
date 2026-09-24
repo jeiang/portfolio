@@ -12,6 +12,13 @@ test("never returns an empty slug", () => {
   assert.equal(slugify(""), "post");
 });
 
+test("reduces a typed slug to one safe path segment", () => {
+  // savePost slugifies typed slugs too; these reach the URL and the sitemap.
+  for (const typed of ["a/b & c", "../etc", '<x>"y"', "What? #1"]) {
+    assert.match(slugify(typed), /^[\p{L}\p{N}-]+$/u, typed);
+  }
+});
+
 test("suffixes on collision", () => {
   const taken = new Set(["hello", "hello-2"]);
   assert.equal(

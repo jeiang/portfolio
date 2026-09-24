@@ -97,17 +97,29 @@ export interface PostInput {
 /** Markdown renders here, once per save, so a page view is a SELECT. */
 export async function savePost(id: number, input: PostInput): Promise<Post> {
   const title = input.title.trim() || "Untitled";
-  const requested = input.slug.trim() || slugify(title);
-  const slug = uniqueSlug(requested, (candidate) => slugTaken(candidate, id));
+  // A typed slug goes through slugify too: it becomes a single path segment
+  // and is interpolated into the sitemap, so `/`, `&` or spaces cannot stay.
+  const requested = slugify(input.slug.trim() || title);
+  // The only await in here. Everything after it is synchronous, so the slug
+  // uniqueness check and the UPDATE cannot interleave with another save.
   const html = await renderMarkdown(input.body_md);
+  const slug = uniqueSlug(requested, (candidate) => slugTaken(candidate, id));
   const excerpt = input.excerpt?.trim() || null;
   // Derived once here so no read path ever parses markdown.
   const summary = excerpt ?? excerptFrom(input.body_md);
 
   // Publishing stamps a time only if the author has not chosen one; a future
-  // value is preserved so scheduling survives a re-save.
+  // value is preserved so scheduling survives a re-save. Re-saving an
+  // already published post with the date left empty keeps its date, or
+  // every edit would bump it to the top of the feed.
+  const current = getDb()
+    .prepare("SELECT status, published_at FROM posts WHERE id = ?")
+    .get(id) as Pick<PostSummary, "status" | "published_at"> | undefined;
+  const kept = current?.status === "published" ? current.published_at : null;
   const publishedAt =
-    input.status === "published" ? (input.published_at ?? now()) : input.published_at;
+    input.status === "published"
+      ? (input.published_at ?? kept ?? now())
+      : input.published_at;
 
   getDb()
     .prepare(

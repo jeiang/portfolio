@@ -1,11 +1,22 @@
 import { Crepe } from "@milkdown/crepe";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
+import { toDatetimeLocal } from "../lib/format.ts";
+
+type PostStatus = "draft" | "published";
 
 interface PostData {
   id: number;
   body_md: string;
   cover_image: string | null;
+  status: PostStatus;
+}
+
+/** What PUT /api/posts/:id hands back: the fields the server may rewrite. */
+interface SavedPost {
+  slug: string;
+  status: PostStatus;
+  published_at: number | null;
 }
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -19,17 +30,40 @@ const source = el<HTMLTextAreaElement>("editor-source");
 const statusLine = el("status-line");
 const coverPreview = el<HTMLImageElement>("cover-preview");
 const coverFile = el<HTMLInputElement>("cover-file");
+const coverClear = el<HTMLButtonElement>("cover-clear");
+const saveButton = el<HTMLButtonElement>("save");
+const togglePublish = el<HTMLButtonElement>("toggle-publish");
+const statusSelect = el<HTMLSelectElement>("status");
+const slugInput = el<HTMLInputElement>("slug");
+const publishedAt = el<HTMLInputElement>("published-at");
+const publishedHint = el("published-hint");
+const publishedSlug = el("published-slug");
 
 let coverImage = data.cover_image;
+/** The status the server holds, which is what the Publish/Unpublish button flips. */
+let savedStatus = data.status;
 let dirty = false;
+/** Bumped on every edit, so a save can tell whether edits landed while it ran. */
+let revision = 0;
+/**
+ * Crepe's serialisation of the saved body. Crepe rewrites markdown on load
+ * (`- item` becomes `* item`, tables get re-padded), so body_md itself never
+ * compares equal to what the editor reports and cannot be the baseline.
+ */
+let baseline = data.body_md;
 let crepe: Crepe | undefined;
 
-function setStatus(message: string): void {
+function setStatus(message: string, state?: "saving" | "saved" | "error"): void {
   statusLine.textContent = message;
+  if (state) statusLine.dataset.state = state;
+  else delete statusLine.dataset.state;
 }
 
 function markDirty(): void {
   dirty = true;
+  revision += 1;
+  // "Saved" is a lie once there is something new to save.
+  if (statusLine.dataset.state === "saved") setStatus("");
   // Cheap insurance against a closed tab. The server copy is still the one
   // that matters; this only survives long enough to be re-saved.
   try {
@@ -78,7 +112,7 @@ async function uploadImage(file: File): Promise<string> {
     body: blob,
   });
   if (!response.ok) {
-    setStatus("Upload failed");
+    setStatus("Upload failed", "error");
     throw new Error(await response.text());
   }
   const { name } = (await response.json()) as { name: string };
@@ -87,18 +121,31 @@ async function uploadImage(file: File): Promise<string> {
 }
 
 async function mountCrepe(markdown: string): Promise<void> {
+  // Crepe defaults code blocks to oneDark but paints them on its light surface
+  // colour, which leaves the tokens unreadable. Without a theme CodeMirror
+  // falls back to its light base theme and basicSetup's default highlight
+  // style. It has to be null: Crepe fills the config with lodash defaultsDeep,
+  // which replaces undefined and merges oneDark into an empty array.
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
   crepe = new Crepe({
     root: mount,
     defaultValue: markdown,
     featureConfigs: {
+      [Crepe.Feature.CodeMirror]: dark ? {} : { theme: null as never },
       [Crepe.Feature.ImageBlock]: {
         onUpload: uploadImage,
       },
     },
   });
   await crepe.create();
+  // With nothing unsaved, whatever Crepe makes of the body *is* the saved state.
+  if (!dirty) baseline = crepe.getMarkdown();
   crepe.on((listener) => {
-    listener.markdownUpdated(() => markDirty());
+    // Crepe emits an update after load with no user edit; only a real change
+    // against the baseline counts.
+    listener.markdownUpdated((_ctx, updated) => {
+      if (updated !== baseline) markDirty();
+    });
   });
 }
 
@@ -139,51 +186,91 @@ coverFile.addEventListener("change", async () => {
   coverImage = url.replace("/uploads/", "");
   coverPreview.src = url;
   coverPreview.hidden = false;
+  coverClear.hidden = false;
   markDirty();
 });
 
-el("cover-clear").addEventListener("click", () => {
+coverClear.addEventListener("click", () => {
   coverImage = null;
   coverPreview.removeAttribute("src");
   coverPreview.hidden = true;
+  coverClear.hidden = true;
   markDirty();
 });
 
 // --- save / delete ---------------------------------------------------
 
-el("save").addEventListener("click", async () => {
-  setStatus("Saving…");
-  const response = await fetch(`/api/posts/${data.id}`, {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      title: el<HTMLInputElement>("title").value,
-      slug: el<HTMLInputElement>("slug").value,
-      excerpt: el<HTMLTextAreaElement>("excerpt").value,
-      cover_image: coverImage,
-      status: el<HTMLSelectElement>("status").value,
-      published_at: el<HTMLInputElement>("published-at").value,
-      body_md: currentMarkdown(),
-    }),
-  });
+/** Reflect what the server stored, so the next save sends it back unchanged. */
+function applySaved(saved: SavedPost): void {
+  savedStatus = saved.status;
+  slugInput.value = saved.slug;
+  statusSelect.value = saved.status;
+  // Without this the server's publish stamp never reaches the form, and the
+  // next save sends an empty date and re-stamps the post as brand new.
+  publishedAt.value = toDatetimeLocal(saved.published_at);
+  publishedSlug.textContent = saved.slug;
+  publishedHint.hidden = saved.status !== "published";
+  togglePublish.textContent = saved.status === "published" ? "Unpublish" : "Publish";
+}
 
-  if (!response.ok) {
-    setStatus(`Save failed: ${await response.text()}`);
-    return;
+async function save(status: PostStatus): Promise<void> {
+  const sentRevision = revision;
+  const body_md = currentMarkdown();
+  saveButton.disabled = true;
+  togglePublish.disabled = true;
+  setStatus("Saving…", "saving");
+
+  try {
+    const response = await fetch(`/api/posts/${data.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: el<HTMLInputElement>("title").value,
+        slug: slugInput.value,
+        excerpt: el<HTMLTextAreaElement>("excerpt").value,
+        cover_image: coverImage,
+        status,
+        published_at: publishedAt.value,
+        body_md,
+      }),
+    });
+
+    if (!response.ok) {
+      setStatus(`Save failed: ${await response.text()}`, "error");
+      return;
+    }
+
+    applySaved((await response.json()) as SavedPost);
+    baseline = body_md;
+    if (revision === sentRevision) {
+      dirty = false;
+      localStorage.removeItem(draftKey);
+      setStatus("Saved", "saved");
+    } else {
+      setStatus("Saved; newer edits are not saved yet");
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    setStatus(`Save failed: ${reason}`, "error");
+  } finally {
+    saveButton.disabled = false;
+    togglePublish.disabled = false;
   }
+}
 
-  const saved = (await response.json()) as { slug: string };
-  el<HTMLInputElement>("slug").value = saved.slug;
-  dirty = false;
-  localStorage.removeItem(draftKey);
-  setStatus("Saved");
+saveButton.addEventListener("click", () => {
+  void save(statusSelect.value === "published" ? "published" : "draft");
+});
+
+togglePublish.addEventListener("click", () => {
+  void save(savedStatus === "published" ? "draft" : "published");
 });
 
 el("delete").addEventListener("click", async () => {
   if (!confirm("Delete this post? This cannot be undone.")) return;
   const response = await fetch(`/api/posts/${data.id}`, { method: "DELETE" });
   if (!response.ok) {
-    setStatus("Delete failed");
+    setStatus("Delete failed", "error");
     return;
   }
   dirty = false;
@@ -197,14 +284,25 @@ addEventListener("beforeunload", (event) => {
 });
 
 // --- boot ------------------------------------------------------------
+// Mount the saved body first: the snapshot can only be compared against
+// Crepe's normalised form of it, which does not exist until Crepe does.
+
+source.value = data.body_md;
+await mountCrepe(data.body_md);
 
 const snapshot = localStorage.getItem(draftKey);
-const initial =
-  snapshot &&
-  snapshot !== data.body_md &&
-  confirm("Restore unsaved changes from this browser?")
-    ? snapshot
-    : data.body_md;
-
-source.value = initial;
-await mountCrepe(initial);
+if (snapshot !== null) {
+  if (
+    snapshot !== baseline &&
+    snapshot !== data.body_md &&
+    confirm("Restore unsaved changes from this browser?")
+  ) {
+    // The restored text is unsaved by definition; keep the snapshot until a save.
+    dirty = true;
+    await crepe?.destroy();
+    source.value = snapshot;
+    await mountCrepe(snapshot);
+  } else {
+    localStorage.removeItem(draftKey);
+  }
+}

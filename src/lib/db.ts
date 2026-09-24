@@ -2,9 +2,25 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { getConfig } from "./config.ts";
-import { migrate } from "./migrate.ts";
+import { excerptFrom } from "./markdown.ts";
+import { migrate, type Migration } from "./migrate.ts";
 import init001 from "../migrations/001_init.sql?raw";
 import summary002 from "../migrations/002_summary.sql?raw";
+
+/**
+ * Summaries saved before excerptFrom read the parsed tree carry headings,
+ * list markers and table pipes, and 002 left rows it found at ''. Re-derive
+ * every row once, the same way savePost does.
+ */
+function resummarise003(handle: DatabaseSync): void {
+  const rows = handle.prepare("SELECT id, body_md, excerpt FROM posts").all() as {
+    id: number;
+    body_md: string;
+    excerpt: string | null;
+  }[];
+  const update = handle.prepare("UPDATE posts SET summary = ? WHERE id = ?");
+  for (const row of rows) update.run(row.excerpt ?? excerptFrom(row.body_md), row.id);
+}
 
 /**
  * Migrations are `.sql` files imported with Vite's `?raw` so they stay
@@ -14,7 +30,7 @@ import summary002 from "../migrations/002_summary.sql?raw";
  *
  * Append only. An entry's index is its version.
  */
-export const MIGRATIONS: readonly string[] = [init001, summary002];
+export const MIGRATIONS: readonly Migration[] = [init001, summary002, resummarise003];
 
 let db: DatabaseSync | undefined;
 

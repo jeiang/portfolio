@@ -9,22 +9,38 @@ import {
 } from "../../lib/auth.ts";
 import { clientIp } from "../../lib/routing.ts";
 
-/** Only same-origin paths: a `next` of `//evil.example` is an open redirect. */
-function safeNext(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/admin";
-  return value;
+/** A username, a password and a path; anything bigger is not a login. */
+const MAX_BODY_BYTES = 4096;
+
+/**
+ * Only admin paths on this origin. Resolving it the way the browser will is
+ * what catches `/\evil.example` and friends, which a prefix check misses.
+ */
+function safeNext(value: string, base: URL): string {
+  const url = URL.parse(value, base);
+  if (!url || url.origin !== base.origin) return "/admin";
+  if (url.pathname !== "/admin" && !url.pathname.startsWith("/admin/")) return "/admin";
+  return url.pathname + url.search;
 }
 
 export const POST: APIRoute = async (context) => {
+  // Both checks run before formData(), which buffers the whole body.
+  // A missing Content-Length counts as too large: browsers always send one.
+  const length = Number(context.request.headers.get("content-length") ?? Infinity);
+  if (!(length <= MAX_BODY_BYTES)) return new Response("Too large", { status: 413 });
+
+  const ip = clientIp(
+    context.clientAddress,
+    context.request.headers.get("x-forwarded-for"),
+  );
+  if (isLockedOut(ip)) return context.redirect("/admin/login?locked", 303);
+
   const form = await context.request.formData();
   const username = String(form.get("username") ?? "");
   const password = String(form.get("password") ?? "");
-  const next = safeNext(String(form.get("next") ?? ""));
-  const ip = clientIp(context.request.headers.get("x-forwarded-for"));
+  const next = safeNext(String(form.get("next") ?? ""), context.url);
 
-  if (isLockedOut(ip)) return context.redirect("/admin/login?locked", 303);
-
-  if (!checkCredentials(username, password)) {
+  if (!(await checkCredentials(username, password))) {
     recordFailure(ip);
     return context.redirect(`/admin/login?failed&next=${encodeURIComponent(next)}`, 303);
   }

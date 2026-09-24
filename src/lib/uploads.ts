@@ -16,6 +16,19 @@ const MIME_BY_EXTENSION: Record<string, string> = Object.fromEntries(
   Object.entries(EXTENSIONS).map(([mime, extension]) => [extension, mime]),
 );
 
+const hasAt = (bytes: Uint8Array, offset: number, signature: string): boolean =>
+  [...signature].every((char, i) => bytes[offset + i] === char.charCodeAt(0));
+
+/** The bytes must be what the Content-Type claims; the name and served type follow it. */
+const SIGNATURES: Record<string, (bytes: Uint8Array) => boolean> = {
+  "image/webp": (bytes) => hasAt(bytes, 0, "RIFF") && hasAt(bytes, 8, "WEBP"),
+  "image/jpeg": (bytes) => hasAt(bytes, 0, "\xff\xd8\xff"),
+  "image/png": (bytes) => hasAt(bytes, 0, "\x89PNG"),
+  "image/gif": (bytes) => hasAt(bytes, 0, "GIF8"),
+  "image/avif": (bytes) =>
+    hasAt(bytes, 4, "ftyp") && (hasAt(bytes, 8, "avif") || hasAt(bytes, 8, "avis")),
+};
+
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 /** Content-hashed names: free dedupe, immutable caching, no user input in a path. */
@@ -25,6 +38,7 @@ export function saveUpload(bytes: Uint8Array, mime: string): string {
   const extension = EXTENSIONS[mime];
   if (!extension) throw new Error(`unsupported image type: ${mime}`);
   if (bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error("file too large");
+  if (!SIGNATURES[mime]!(bytes)) throw new Error(`file is not a valid ${mime}`);
 
   const { uploadsDir } = getConfig();
   mkdirSync(uploadsDir, { recursive: true });

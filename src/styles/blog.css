@@ -9,20 +9,18 @@
   gap: 1.5rem;
 }
 
+/* minmax(0, ...) via min(): a bare 1fr can't shrink below its longest word,
+   so one long URL in a summary squashed its neighbours. auto-fit also lets
+   two posts share the row instead of leaving an empty third column. */
 .cards-writing {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-@media (max-width: 760px) {
-  .cards-writing {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 }
 
 .card-post {
   display: block;
   text-decoration: none;
   color: inherit;
+  overflow-wrap: anywhere;
 }
 
 .card-date {
@@ -56,9 +54,9 @@
 /* The main site has no nav bar; that restraint is the design. The blog
    gets a name and a way home, and nothing else. */
 .blog-header {
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 0;
+  padding: 2.5rem 2.5rem 0;
 }
 
 .blog-header a {
@@ -72,10 +70,47 @@
   color: var(--text);
 }
 
+/* Reading pages sit on an opaque sheet so the background grid never runs
+   through prose, tables or code. */
 .blog-main {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 3rem 1.5rem 6rem;
+  max-width: 760px;
+  margin: 1.5rem auto 4rem;
+  padding: 3rem 2.5rem 4rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  /* Long URLs, slugs and inline code wrap rather than widen the page. */
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .blog-header {
+    padding: 2rem 1.25rem 0;
+  }
+  .blog-main {
+    margin: 1rem 0 0;
+    padding: 2rem 1.25rem 4rem;
+    border-width: 1px 0 0;
+    border-radius: 0;
+  }
+}
+
+/* One link style for everything inside the blog that isn't a card: prose,
+   the not-found page and the way back to the index. */
+.blog-main a:not(.card) {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+.blog-main a:not(.card):hover {
+  color: var(--link-hover);
+}
+.blog-main a:not(.card):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .blog-main > h1 {
@@ -94,6 +129,16 @@
   display: block;
   text-decoration: none;
   color: inherit;
+  /* Cards and the sheet are both white in light mode; the border carries
+     the edge. */
+  border-color: color-mix(in srgb, var(--text) 16%, transparent);
+}
+
+.post-list .card h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.45rem;
 }
 
 .post-empty {
@@ -114,8 +159,11 @@
 }
 
 .post-cover {
+  display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   margin-bottom: 2rem;
@@ -150,18 +198,22 @@
   font-size: 1.2rem;
   margin-bottom: 0;
 }
-
-.prose a {
-  color: var(--text);
-  text-decoration-color: var(--border-strong);
+.prose h4 {
+  font-size: 1.05rem;
+  margin-bottom: 0;
 }
-.prose a:hover {
-  color: var(--accent);
+
+.prose hr {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
+  margin: 2.5rem 0;
 }
 
 .prose img {
   max-width: 100%;
   height: auto;
+  max-height: 80vh;
+  object-fit: contain;
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
@@ -182,14 +234,19 @@
 
 .prose code {
   font-size: 0.9em;
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.1em 0.35em;
+  overflow-wrap: anywhere;
 }
 
+/* Plain fences (no language) have no .shiki class, so the block itself
+   carries the surface and text colour. */
 .prose pre {
-  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
   border-radius: var(--radius);
   padding: 1rem 1.1rem;
   overflow-x: auto;
@@ -202,33 +259,55 @@
   font-size: 0.875rem;
 }
 
+/* display:block turns the table into its own scroll container, so a wide
+   table scrolls instead of pushing the page sideways. Cells keep normal
+   wrapping: with .blog-main's overflow-wrap:anywhere they would crush to one
+   character per line rather than scroll. */
 .prose table {
-  width: 100%;
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-family: var(--font);
   font-size: 0.95rem;
+  background: var(--bg-elevated);
 }
 
 .prose th,
 .prose td {
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--text) 25%, transparent);
   padding: 0.5rem 0.7rem;
   text-align: left;
+  vertical-align: top;
+  overflow-wrap: normal;
+}
+
+.prose th {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 /* Shiki runs with defaultColor:false, so each token carries both palettes
    as custom properties and the existing prefers-color-scheme block picks
-   one. One stylesheet, no theme toggle, no flash. */
+   one. One stylesheet, no theme toggle, no flash. Only the token colours are
+   taken from the theme; the block keeps the page surface from .prose pre so
+   it doesn't read as a separate grey slab in dark mode. */
 .prose .shiki,
 .prose .shiki span {
   color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
 }
 
 @media (prefers-color-scheme: dark) {
   .prose .shiki,
   .prose .shiki span {
     color: var(--shiki-dark);
-    background-color: var(--shiki-dark-bg);
   }
+}
+
+/* --- Post footer -------------------------------------------- */
+
+.post-footer {
+  margin-top: 3.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
 }

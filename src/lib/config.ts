@@ -31,6 +31,8 @@ export interface Config {
   blogHost: string;
   adminUsername: string;
   adminPasswordHash: string;
+  /** Proxy addresses, beyond loopback, whose X-Forwarded-For is believed. */
+  trustedProxies: string[];
 }
 
 export function loadConfig(env: Env = process.env): Config {
@@ -66,6 +68,9 @@ export function loadConfig(env: Env = process.env): Config {
     blogHost: new URL(blogUrl).host,
     adminUsername: readEnv("PORTFOLIO_ADMIN_USERNAME", env) ?? "admin",
     adminPasswordHash,
+    trustedProxies: (readEnv("PORTFOLIO_TRUSTED_PROXIES", env) ?? "")
+      .split(/[\s,]+/)
+      .filter(Boolean),
   };
 }
 

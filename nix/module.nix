@@ -83,6 +83,18 @@ in
       '';
     };
 
+    trustedProxies = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "10.0.0.1" ];
+      description = ''
+        Addresses of reverse proxies on other machines. Login throttling
+        keys on the last X-Forwarded-For entry only when the peer is one of
+        these or loopback; otherwise every client behind the proxy shares
+        the proxy's address and one lockout.
+      '';
+    };
+
     environmentFile = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
@@ -142,6 +154,7 @@ in
         PORTFOLIO_SITE_URL = cfg.siteUrl;
         PORTFOLIO_BLOG_URL = cfg.blogUrl;
         PORTFOLIO_ADMIN_USERNAME = cfg.adminUsername;
+        PORTFOLIO_TRUSTED_PROXIES = lib.concatStringsSep "," cfg.trustedProxies;
         # %d is the credentials directory systemd populates from
         # LoadCredential below.
         PORTFOLIO_ADMIN_PASSWORD_HASH_FILE = "%d/admin-password-hash";

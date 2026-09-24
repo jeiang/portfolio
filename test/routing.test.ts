@@ -69,9 +69,12 @@ test("query strings survive both rewrites and redirects", () => {
   });
 });
 
-test("client IP is the last forwarded hop, not the client-supplied first", () => {
-  assert.equal(clientIp("203.0.113.9"), "203.0.113.9");
-  assert.equal(clientIp("1.2.3.4, 203.0.113.9"), "203.0.113.9");
-  assert.equal(clientIp(null), "direct");
-  assert.equal(clientIp(""), "direct");
+test("client IP is the socket peer unless a loopback proxy forwarded it", () => {
+  assert.equal(clientIp("198.51.100.7", "203.0.113.9"), "198.51.100.7");
+  assert.equal(clientIp("198.51.100.7", null), "198.51.100.7");
+  assert.equal(clientIp("127.0.0.1", "1.2.3.4, 203.0.113.9"), "203.0.113.9");
+  assert.equal(clientIp("::1", "203.0.113.9"), "203.0.113.9");
+  assert.equal(clientIp("::ffff:127.0.0.1", "203.0.113.9"), "203.0.113.9");
+  assert.equal(clientIp("127.0.0.1", null), "127.0.0.1");
+  assert.equal(clientIp("127.0.0.1", ""), "127.0.0.1");
 });

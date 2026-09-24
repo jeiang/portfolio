@@ -3,15 +3,25 @@ import { getConfig } from "../lib/config.ts";
 import { isoDate } from "../lib/format.ts";
 import { listPublished } from "../lib/posts.ts";
 
+const XML_ENTITIES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&apos;",
+};
+
+const xml = (text: string): string => text.replace(/[&<>"']/g, (c) => XML_ENTITIES[c]!);
+
 // Hand-rolled rather than @astrojs/sitemap: the URL set lives in SQLite and
 // is only known at request time, which a build-time integration cannot see.
 export const GET: APIRoute = () => {
   const { blogUrl } = getConfig();
   const entries = [
-    `<url><loc>${blogUrl}/</loc></url>`,
+    `<url><loc>${xml(blogUrl)}/</loc></url>`,
     ...listPublished().map(
       (post) =>
-        `<url><loc>${blogUrl}/${post.slug}</loc><lastmod>${isoDate(post.updated_at)}</lastmod></url>`,
+        `<url><loc>${xml(`${blogUrl}/${post.slug}`)}</loc><lastmod>${isoDate(post.updated_at)}</lastmod></url>`,
     ),
   ];
 

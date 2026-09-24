@@ -64,18 +64,22 @@ export function resolveRoute({
   return { kind: "rewrite", path: `/blog${pathname === "/" ? "" : pathname}${search}` };
 }
 
+const isLoopback = (address: string): boolean =>
+  address === "::1" || /^(::ffff:)?127\./.test(address);
+
 /**
- * The last X-Forwarded-For entry, not the first: each proxy appends the peer
- * it received from, so the leftmost value is whatever the client chose to
- * send. No trust-proxy switch — this service is always behind one, and a
- * knob whose wrong setting silently disables throttling is worse than a
- * fixed assumption.
+ * The address to throttle a login by. Normally the socket peer: headers are
+ * the client's to choose, and the container image publishes the port with
+ * no proxy in front. A loopback peer is the documented reverse proxy on the
+ * same machine, and then the last X-Forwarded-For entry is the address it
+ * saw — each proxy appends its peer, so the leftmost values are whatever the
+ * client sent.
  */
-export function clientIp(forwardedFor: string | null): string {
-  if (!forwardedFor) return "direct";
-  const hops = forwardedFor
+export function clientIp(peer: string, forwardedFor: string | null): string {
+  if (!isLoopback(peer)) return peer;
+  const hops = (forwardedFor ?? "")
     .split(",")
     .map((hop) => hop.trim())
     .filter(Boolean);
-  return hops.at(-1) ?? "direct";
+  return hops.at(-1) ?? peer;
 }

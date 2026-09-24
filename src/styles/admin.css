@@ -283,6 +283,27 @@ select:focus {
   min-height: 60vh;
 }
 
+/* Code block chrome. Crepe's muted buttons and oneDark's grey gutter (plus its
+   near-black active line) miss 4.5:1 on the tinted code surface; the buttons
+   also sit on a fading opacity, so they take full text colour. */
+.editor-shell .milkdown .milkdown-code-block .cm-editor {
+  color: var(--text);
+}
+.editor-shell .milkdown .milkdown-code-block .cm-gutters {
+  color: var(--text-muted);
+}
+.editor-shell .milkdown .milkdown-code-block .cm-activeLineGutter {
+  background: var(--crepe-color-hover);
+  color: var(--text);
+}
+.editor-shell .milkdown .milkdown-code-block .tools .language-button,
+.editor-shell .milkdown .milkdown-code-block .tools .tools-button-group button {
+  color: var(--text);
+}
+.editor-shell .milkdown .milkdown-code-block .tools .tools-button-group button svg {
+  fill: var(--text);
+}
+
 /* Crepe pads the document 60px 120px, leaving a 100px column on a phone. The
    block handle hangs in that gutter, so it goes too. */
 @media (max-width: 640px) {
@@ -325,6 +346,10 @@ select:focus {
   font-size: 0.82rem;
   color: var(--text-muted);
   min-height: 1.2em;
+}
+/* Empty, it would still take a gap and indent the wrapped action row. */
+.status-line:empty {
+  display: none;
 }
 .status-line[data-state="error"] {
   color: var(--danger);

@@ -122,14 +122,16 @@ async function uploadImage(file: File): Promise<string> {
 
 async function mountCrepe(markdown: string): Promise<void> {
   // Crepe defaults code blocks to oneDark but paints them on its light surface
-  // colour, which leaves the tokens unreadable. An empty theme falls back to
-  // CodeMirror's light base theme and basicSetup's default highlight style.
+  // colour, which leaves the tokens unreadable. Without a theme CodeMirror
+  // falls back to its light base theme and basicSetup's default highlight
+  // style. It has to be null: Crepe fills the config with lodash defaultsDeep,
+  // which replaces undefined and merges oneDark into an empty array.
   const dark = matchMedia("(prefers-color-scheme: dark)").matches;
   crepe = new Crepe({
     root: mount,
     defaultValue: markdown,
     featureConfigs: {
-      [Crepe.Feature.CodeMirror]: dark ? {} : { theme: [] },
+      [Crepe.Feature.CodeMirror]: dark ? {} : { theme: null as never },
       [Crepe.Feature.ImageBlock]: {
         onUpload: uploadImage,
       },

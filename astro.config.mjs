@@ -8,6 +8,12 @@ export default defineConfig({
   // database.
   output: "server",
   adapter: node({ mode: "standalone" }),
+  // Behind a TLS-terminating proxy the socket is plain http, so without
+  // this the request URL is http:// and Astro's origin check rejects every
+  // form POST from the https page (the admin login among them). Only the
+  // protocol is pinned: the hostnames are runtime configuration, and the
+  // middleware checks Origin against them itself.
+  security: { allowedDomains: [{ protocol: "https" }] },
   // Both hostnames are served by this one process; canonical URLs are built
   // from PORTFOLIO_SITE_URL / PORTFOLIO_BLOG_URL at runtime instead.
   trailingSlash: "never",

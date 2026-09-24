@@ -16,8 +16,11 @@ testers.runNixOSTest {
 
     services.portfolio = {
       enable = true;
-      siteUrl = "http://site.test";
-      blogUrl = "http://blog.test";
+      # https, as deployed: the requests below carry X-Forwarded-Proto the
+      # way the reverse proxy sets it, so a regression in trusting it shows
+      # up as the login being refused.
+      siteUrl = "https://site.test";
+      blogUrl = "https://blog.test";
       inherit adminPasswordHashFile;
     };
   };
@@ -54,30 +57,37 @@ testers.runNixOSTest {
             f"tr '\\0' '\\n' < /proc/{pid}/environ | grep -q -- '--max-old-space-size=384'"
         )
 
+    # What the TLS-terminating proxy forwards for a form on the https page.
+    proxied = "-H 'Host: blog.test' -H 'Origin: https://blog.test' -H 'X-Forwarded-Proto: https'"
+
     with subtest("rejects the wrong password"):
         out = machine.succeed(
-            "curl -sS -o /dev/null -w '%{redirect_url}' -H 'Host: blog.test' "
-            "-H 'Origin: http://blog.test' -d 'username=admin&password=nope' "
-            "http://127.0.0.1:4321/api/login"
+            f"curl -sS -o /dev/null -w '%{{redirect_url}}' {proxied} "
+            "-d 'username=admin&password=nope' http://127.0.0.1:4321/api/login"
         )
         assert "failed" in out, out
 
     with subtest("signs in and publishes a post"):
-        machine.succeed(
-            "curl -sS -o /dev/null -c /tmp/jar -H 'Host: blog.test' "
-            "-H 'Origin: http://blog.test' "
-            "-d 'username=admin&password=test-password' "
-            "http://127.0.0.1:4321/api/login"
+        headers = machine.succeed(
+            f"curl -sS -o /dev/null -D - {proxied} "
+            "-d 'username=admin&password=test-password' http://127.0.0.1:4321/api/login"
         )
+        cookie = next(
+            line.split(":", 1)[1].split(";")[0].strip()
+            for line in headers.splitlines()
+            if line.lower().startswith("set-cookie:")
+        )
+        assert "; Secure" in headers, headers
+        session = f"-H 'Cookie: {cookie}'"
 
         location = machine.succeed(
-            "curl -sS -o /dev/null -w '%{redirect_url}' -b /tmp/jar -H 'Host: blog.test' "
-            "-H 'Origin: http://blog.test' -X POST http://127.0.0.1:4321/api/posts"
+            f"curl -sS -o /dev/null -w '%{{redirect_url}}' {session} {proxied} "
+            "-X POST http://127.0.0.1:4321/api/posts"
         )
         post_id = location.rstrip("/").split("/")[-1]
 
         machine.succeed(
-            "curl -fsS -b /tmp/jar -H 'Host: blog.test' -H 'Origin: http://blog.test' "
+            f"curl -fsS {session} {proxied} "
             "-H 'content-type: application/json' -X PUT "
             """-d '{"title":"From the VM","slug":"","excerpt":"","cover_image":null,"""
             """"status":"published","published_at":"","body_md":"Hello from a test."}' """
@@ -94,8 +104,8 @@ testers.runNixOSTest {
 
     with subtest("unauthenticated writes are refused"):
         machine.succeed(
-            "curl -sS -o /dev/null -w '%{http_code}' -H 'Host: blog.test' "
-            "-H 'Origin: http://blog.test' -X POST http://127.0.0.1:4321/api/posts "
+            f"curl -sS -o /dev/null -w '%{{http_code}}' {proxied} "
+            "-X POST http://127.0.0.1:4321/api/posts "
             "| grep -q 401"
         )
   '';

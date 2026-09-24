@@ -9,6 +9,19 @@ const id = Number(Astro.params.id);
 const post = Number.isInteger(id) ? getById(id) : undefined;
 
 if (!post) return Astro.redirect("/admin", 303);
+
+// Inlined into <script type="application/json">, so `<` must be escaped: a body
+// containing `</script>` (or `<!--<script`) would otherwise end the block early,
+// breaking JSON.parse and the whole editor, and inject the rest as markup.
+const postData = JSON.stringify({
+  id: post.id,
+  body_md: post.body_md,
+  cover_image: post.cover_image,
+  status: post.status,
+})
+  .replace(/</g, "\\u003c")
+  .replace(/\u2028/g, "\\u2028")
+  .replace(/\u2029/g, "\\u2029");
 ---
 
 <Admin title={`Edit · ${post.title}`}>
@@ -19,6 +32,9 @@ if (!post) return Astro.redirect("/admin", 303);
         <span class="status-line" id="status-line"></span>
         <button type="button" id="toggle-source">Markdown</button>
         <button type="button" class="button-danger" id="delete">Delete</button>
+        <button type="button" class="button" id="toggle-publish">
+          {post.status === "published" ? "Unpublish" : "Publish"}
+        </button>
         <button type="button" class="button-primary" id="save">Save</button>
         <a class="button" href="/admin">Back</a>
       </div>
@@ -33,14 +49,10 @@ if (!post) return Astro.redirect("/admin", 303);
       <label class="field">
         <span>Slug</span>
         <input type="text" id="slug" value={post.slug} />
-        {
-          post.status === "published" && (
-            <span class="hint">
-              Published at {blogUrl}/{post.slug} — changing this breaks every existing
-              link to it.
-            </span>
-          )
-        }
+        <span class="hint" id="published-hint" hidden={post.status !== "published"}>
+          Published at {blogUrl}/<span id="published-slug">{post.slug}</span> — changing
+          this breaks every existing link to it.
+        </span>
       </label>
 
       <label class="field">
@@ -75,7 +87,9 @@ if (!post) return Astro.redirect("/admin", 303);
       <div class="admin-actions">
         <input type="file" id="cover-file" accept="image/*" hidden />
         <button type="button" id="cover-pick">Choose image</button>
-        <button type="button" id="cover-clear">Remove</button>
+        <button type="button" class="button" id="cover-clear" hidden={!post.cover_image}
+          >Remove</button
+        >
       </div>
       <img
         class="cover-preview"
@@ -95,11 +109,7 @@ if (!post) return Astro.redirect("/admin", 303);
       is:inline
       type="application/json"
       id="post-data"
-      set:html={JSON.stringify({
-        id: post.id,
-        body_md: post.body_md,
-        cover_image: post.cover_image,
-      })}
+      set:html={postData}
     />
 
     <script>

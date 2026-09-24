@@ -5,16 +5,34 @@
    ============================================================ */
 
 :root {
+  color-scheme: light dark;
   --bg: #e6eef9; /* light cutting-mat blue */
-  --grid-fine: rgba(64, 104, 158, 0.09); /* 1-unit lines */
-  --grid-major: rgba(64, 104, 158, 0.16); /* every 5 units */
-  --grid-diag: rgba(64, 104, 158, 0.06); /* 45deg guides */
+  /* Kept faint: these lines run under body text, so every bit of alpha
+     costs contrast. */
+  --grid-fine: rgba(64, 104, 158, 0.045); /* 1-unit lines */
+  --grid-major: rgba(64, 104, 158, 0.08); /* every 5 units */
+  --grid-diag: rgba(64, 104, 158, 0.03); /* 45deg guides */
   --bg-elevated: #ffffff; /* card surface */
+  --bg-surface: #ffffff; /* opaque reading surface (posts, code, tables) */
   --border: rgba(120, 110, 150, 0.18);
   --border-strong: rgba(255, 158, 125, 0.6);
   --text: #3a3350; /* deep plum, readable */
-  --text-muted: #6f6889;
-  --text-faint: #9a94ad;
+  --text-muted: #5e5878;
+  --text-faint: #665f80;
+
+  /* Coral is too pale to carry text or focus rings on the light mat;
+     these are the same hue, darkened until they pass AA. */
+  --link: #b4441f;
+  --link-hover: #a8371a;
+  --focus: #c2410c;
+  --hl-text: #a8371a;
+
+  --danger: #b3261e;
+  --control-border: #8a84a0; /* 3:1 boundary for inputs and buttons */
+  --success-text: #0f6b5a;
+  --success-bg: #e0f7f4;
+  --warn-text: #8a5a00;
+  --warn-bg: #fdf1d8;
 
   --accent: #ff9e7d; /* light coral */
   --accent-2: #89cff0; /* baby blue */
@@ -41,12 +59,25 @@
     --grid-fine: rgba(150, 185, 230, 0.07);
     --grid-major: rgba(150, 185, 230, 0.14);
     --grid-diag: rgba(150, 185, 230, 0.05);
-    --bg-elevated: rgba(255, 255, 255, 0.055);
+    --bg-elevated: #1c2737; /* opaque, so the grid stays behind cards */
+    --bg-surface: #16223a;
     --border: rgba(230, 224, 245, 0.14);
     --border-strong: rgba(255, 171, 144, 0.5);
     --text: #efeaf6;
     --text-muted: #c3bcd6;
     --text-faint: #948da8;
+
+    --link: #ffab90;
+    --link-hover: #ffc2ad;
+    --focus: var(--accent);
+    --hl-text: #ffc2ad;
+
+    --danger: #ffb4ab;
+    --control-border: #7a7494;
+    --success-text: #77dddd;
+    --success-bg: rgba(119, 221, 221, 0.12);
+    --warn-text: #ffd27a;
+    --warn-bg: rgba(255, 210, 122, 0.12);
 
     --accent: #ffab90; /* light coral (lifted for dark) */
     --accent-2: #89cff0; /* baby blue */
@@ -63,8 +94,14 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-snap-type: y mandatory;
-  overflow-x: hidden;
+  /* Proximity, not mandatory: a panel taller than the window must still
+     scroll freely instead of snapping back to its top. */
+  scroll-snap-type: y proximity;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 body {
@@ -122,12 +159,12 @@ section {
   flex-direction: column;
   justify-content: center;
   scroll-snap-align: start;
-  scroll-snap-stop: always;
-  padding: 5.5rem 0 2rem;
+  /* Tight enough that the intro (hero + cards + cue) fits a 900px window. */
+  padding: 3rem 0 1.5rem;
 }
 
 .panel-intro {
-  gap: 1.75rem;
+  gap: 1.25rem;
 }
 .panel-intro .hero,
 .panel-intro .focus {
@@ -136,7 +173,7 @@ section {
 }
 
 .panel-intro .hero {
-  padding-bottom: 5rem;
+  padding-bottom: 1.5rem;
 }
 
 .panel-contact {
@@ -189,6 +226,7 @@ h2 {
   font-size: clamp(1.7rem, 4vw, 2.4rem);
   font-weight: 650;
   letter-spacing: -0.02em;
+  line-height: 1.2;
   margin-bottom: 1.25rem;
 }
 
@@ -241,7 +279,7 @@ section p + p {
   font-style: normal;
   font-weight: 600;
   font-size: 0.9em;
-  color: #a8371a;
+  color: var(--hl-text);
   background: color-mix(in srgb, var(--accent) 32%, transparent);
   padding: 0.06em 0.45em;
   border-radius: 9px;
@@ -267,22 +305,24 @@ section p + p {
   max-width: none;
 }
 
+/* minmax(0, 1fr), not 1fr: a bare 1fr track cannot shrink below its
+   longest word, so one long URL in a summary would squash its siblings. */
 .cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
-  margin-top: 1.75rem;
+  margin-top: 1.25rem;
 }
 
 /* Collapse the landscape row on smaller screens */
-@media (max-width: 760px) {
+@media (max-width: 960px) {
   .cards {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 440px) {
   .cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -297,8 +337,12 @@ section p + p {
     box-shadow 0.3s ease;
 }
 
-.card:hover {
+/* Only cards that are links lift: movement promises a click. */
+a.card:hover,
+a.card:focus-visible {
   transform: translateY(-4px);
+  border-color: var(--border-strong);
+  box-shadow: 0 10px 26px rgba(30, 50, 90, 0.1);
 }
 
 .card-icon {
@@ -326,21 +370,17 @@ section p + p {
   background: var(--icon-4);
 }
 
-.card:nth-child(1):hover {
+.focus .card:nth-child(1):hover {
   border-color: var(--icon-1);
-  box-shadow: 0 12px 30px rgba(255, 182, 193, 0.45);
 }
-.card:nth-child(2):hover {
+.focus .card:nth-child(2):hover {
   border-color: var(--icon-2);
-  box-shadow: 0 12px 30px rgba(137, 207, 240, 0.45);
 }
-.card:nth-child(3):hover {
+.focus .card:nth-child(3):hover {
   border-color: var(--icon-3);
-  box-shadow: 0 12px 30px rgba(212, 225, 87, 0.45);
 }
-.card:nth-child(4):hover {
+.focus .card:nth-child(4):hover {
   border-color: var(--icon-4);
-  box-shadow: 0 12px 30px rgba(230, 168, 215, 0.45);
 }
 
 .card-icon svg {
@@ -353,6 +393,11 @@ section p + p {
   font-weight: 600;
   letter-spacing: -0.01em;
   margin-bottom: 0.5rem;
+}
+
+.card h3,
+.card p {
+  overflow-wrap: anywhere;
 }
 
 .card p {
@@ -375,7 +420,7 @@ section p + p {
 /* Rectangular contact cards, each with its brand logo */
 .contact-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   margin-top: 2rem;
   text-align: left;
@@ -383,7 +428,7 @@ section p + p {
 
 @media (max-width: 680px) {
   .contact-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     max-width: 420px;
     margin-inline: auto;
   }
@@ -412,7 +457,6 @@ section p + p {
 }
 
 .contact-card:focus-visible {
-  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -430,14 +474,24 @@ section p + p {
   height: 30px;
   display: block;
 }
+/* Brand colours, adjusted until each icon clears 3:1 on its card. */
 .contact-card-logo.email {
-  color: var(--accent);
+  color: var(--link);
 }
 .contact-card-logo.whatsapp {
-  color: #25d366;
+  color: #128c7e;
 }
 .contact-card-logo.linkedin {
   color: #0a66c2;
+}
+
+@media (prefers-color-scheme: dark) {
+  .contact-card-logo.whatsapp {
+    color: #25d366;
+  }
+  .contact-card-logo.linkedin {
+    color: #70b5f9;
+  }
 }
 
 .contact-card-text {
@@ -462,40 +516,50 @@ section p + p {
 
 /* ---------- Entrance animations ---------- */
 
-.reveal {
+/* Hidden only once the inline script in Base.astro has tagged <html>
+   with .js: without JavaScript nothing would ever reveal it. The slide
+   uses `translate`, not `transform`, so it never fights a card's hover
+   lift, and the stagger delay is per-property so hover stays instant. */
+.js .reveal {
   opacity: 0;
-  transform: translateY(18px);
+  translate: 0 18px;
   transition:
-    opacity 0.7s ease,
-    transform 0.7s ease;
+    opacity 0.7s ease var(--reveal-delay, 0s),
+    translate 0.7s ease var(--reveal-delay, 0s),
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
-.reveal.visible {
+.js .reveal.visible {
   opacity: 1;
-  transform: none;
+  translate: none;
 }
 
-/* Stagger siblings slightly */
+/* Stagger siblings slightly (reset first: custom properties inherit) */
+.reveal {
+  --reveal-delay: 0s;
+}
 .reveal:nth-child(2) {
-  transition-delay: 0.08s;
+  --reveal-delay: 0.08s;
 }
 .reveal:nth-child(3) {
-  transition-delay: 0.16s;
+  --reveal-delay: 0.16s;
 }
 .reveal:nth-child(4) {
-  transition-delay: 0.24s;
+  --reveal-delay: 0.24s;
 }
 .reveal:nth-child(5) {
-  transition-delay: 0.32s;
+  --reveal-delay: 0.32s;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-  .reveal {
+  .js .reveal {
     opacity: 1;
-    transform: none;
+    translate: none;
     transition: none;
   }
   .card,

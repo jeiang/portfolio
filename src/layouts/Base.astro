@@ -24,6 +24,11 @@ const {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Runs before first paint: .reveal content is only hidden when JS is
+         there to reveal it again. -->
+    <script is:inline>
+      document.documentElement.classList.add("js");
+    </script>
     <meta name="description" content={description} />
     <title>{title}</title>
     {canonical && <link rel="canonical" href={canonical} />}

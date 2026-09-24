@@ -15,6 +15,11 @@ test("highlights code with both palettes as CSS variables", async () => {
   assert.match(html, /--shiki-dark/);
 });
 
+test("fences without a known language still get the shiki box", async () => {
+  const html = await renderMarkdown("```\nplain\n```\n\n```nosuchlang\nx\n```");
+  assert.equal(html.match(/<pre class="shiki/g)?.length, 2, html);
+});
+
 test("passes raw HTML through for embeds", async () => {
   const html = await renderMarkdown('<iframe src="https://example.com"></iframe>');
   assert.match(html, /<iframe/);
@@ -23,8 +28,22 @@ test("passes raw HTML through for embeds", async () => {
 test("derives an excerpt from prose, not from markup", () => {
   assert.equal(
     excerptFrom("# Title\n\nSome **bold** text with a [link](https://example.com)."),
-    "Title Some bold text with a link.",
+    "Some bold text with a link.",
   );
+});
+
+test("leaves headings, lists, tables and raw HTML out of the excerpt", () => {
+  const markdown = [
+    "# Heading",
+    "Intro with `code`.",
+    "- item one\n- item two",
+    "1. first",
+    "| a | b |\n|---|---|\n| 1 | 2 |",
+    "<div>raw</div>",
+    "---",
+    "> Quoted.",
+  ].join("\n\n");
+  assert.equal(excerptFrom(markdown), "Intro with code. Quoted.");
 });
 
 test("truncates on a word boundary", () => {

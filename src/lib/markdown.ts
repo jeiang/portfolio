@@ -39,9 +39,15 @@ const processor = unified()
   .use(rehypeShiki, {
     // Emits --shiki-light/--shiki-dark CSS variables instead of baked
     // colours, so code blocks follow the site's prefers-color-scheme
-    // block without a second stylesheet or a theme toggle.
-    themes: { light: "github-light", dark: "github-dark" },
+    // block without a second stylesheet or a theme toggle. The -default
+    // dark theme because plain github-dark greys comments out to 3:1.
+    themes: { light: "github-light", dark: "github-dark-default" },
     defaultColor: false,
+    // A fence with no language, or one shiki does not know, still goes
+    // through shiki as plain text, so every code block gets the same
+    // .shiki box instead of a bare <pre> the grid shows through.
+    defaultLanguage: "text",
+    fallbackLanguage: "text",
   })
   .use(rehypeStringify, { allowDangerousHtml: true });
 
@@ -49,18 +55,47 @@ export async function renderMarkdown(markdown: string): Promise<string> {
   return String(await processor.process(markdown));
 }
 
-/** Fallback for posts with no explicit excerpt. */
-export function excerptFrom(markdown: string, limit = 160): string {
-  const text = markdown
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
-    .replace(/^\s{0,3}>\s?/gm, "")
-    .replace(/[*_`~]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+// Parse only: the excerpt needs the tree, not HTML. GFM so a table is a
+// table node rather than a paragraph full of pipes.
+const excerptParser = unified().use(remarkParse).use(remarkGfm);
 
+interface MdNode {
+  type: string;
+  value?: string;
+  children?: MdNode[];
+}
+
+/** Only literal text: images and inline HTML contribute nothing a card can show. */
+function textOf(node: MdNode): string {
+  if (node.type === "text" || node.type === "inlineCode") return node.value ?? "";
+  if (node.type === "break") return " ";
+  return (node.children ?? []).map(textOf).join("");
+}
+
+/**
+ * Fallback for posts with no explicit excerpt: the running prose, i.e. the
+ * paragraphs at the top level and inside blockquotes. Headings, lists,
+ * tables, code and raw HTML are structure, not a summary, and flattened
+ * into one line they read as markup soup.
+ */
+export function excerptFrom(markdown: string, limit = 160): string {
+  const paragraphs: string[] = [];
+  let length = 0;
+
+  const collect = (nodes: MdNode[]): void => {
+    for (const node of nodes) {
+      if (length > limit) return;
+      if (node.type === "blockquote") collect(node.children ?? []);
+      if (node.type !== "paragraph") continue;
+      const text = textOf(node).replace(/\s+/g, " ").trim();
+      if (!text) continue;
+      paragraphs.push(text);
+      length += text.length + 1;
+    }
+  };
+  collect((excerptParser.parse(markdown) as MdNode).children ?? []);
+
+  const text = paragraphs.join(" ");
   if (text.length <= limit) return text;
   const cut = text.slice(0, limit);
   const lastSpace = cut.lastIndexOf(" ");

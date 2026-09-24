@@ -28,22 +28,30 @@ const cover = post?.cover_image ? `${blogUrl}/uploads/${post.cover_image}` : und
   <main class="blog-main">
     {
       post ? (
-        <article>
-          <div class="post-header">
-            <span class="card-date">
-              <time datetime={isoDate(post.published_at)}>
-                {formatDate(post.published_at)}
-              </time>
-            </span>
-            <h1>{post.title}</h1>
-          </div>
+        <>
+          <article>
+            <div class="post-header">
+              <span class="card-date">
+                <time datetime={isoDate(post.published_at)}>
+                  {formatDate(post.published_at)}
+                </time>
+              </span>
+              <h1>{post.title}</h1>
+            </div>
 
-          {post.cover_image && (
-            <img class="post-cover" src={`/uploads/${post.cover_image}`} alt="" />
-          )}
+            {post.cover_image && (
+              <img class="post-cover" src={`/uploads/${post.cover_image}`} alt="" />
+            )}
 
-          <div class="prose" set:html={post.body_html} />
-        </article>
+            <div class="prose" set:html={post.body_html} />
+          </article>
+
+          <nav class="post-footer" aria-label="Blog">
+            <a href="/">
+              <span aria-hidden="true">←</span> All writing
+            </a>
+          </nav>
+        </>
       ) : (
         <>
           <h1>Not found</h1>

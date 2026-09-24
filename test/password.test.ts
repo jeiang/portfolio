@@ -2,23 +2,23 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { hashPassword, safeEqual, verifyPassword } from "../src/lib/password.ts";
 
-test("verifies the password it hashed", () => {
+test("verifies the password it hashed", async () => {
   const stored = hashPassword("correct horse battery staple");
-  assert.ok(verifyPassword("correct horse battery staple", stored));
+  assert.ok(await verifyPassword("correct horse battery staple", stored));
 });
 
-test("rejects the wrong password", () => {
+test("rejects the wrong password", async () => {
   const stored = hashPassword("hunter2");
-  assert.equal(verifyPassword("hunter3", stored), false);
+  assert.equal(await verifyPassword("hunter3", stored), false);
 });
 
 test("salts, so the same password hashes differently every time", () => {
   assert.notEqual(hashPassword("same"), hashPassword("same"));
 });
 
-test("rejects malformed stored values instead of throwing", () => {
+test("rejects malformed stored values instead of throwing", async () => {
   for (const stored of ["", "nonsense", "scrypt$1$1$1$only-five", "bcrypt$1$1$1$a$b"]) {
-    assert.equal(verifyPassword("x", stored), false, stored);
+    assert.equal(await verifyPassword("x", stored), false, stored);
   }
 });
 

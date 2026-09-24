@@ -26,7 +26,9 @@ dockerTools.buildLayeredImage {
     ExposedPorts."4321/tcp" = { };
     Volumes."/var/lib/portfolio" = { };
     Env = [
-      # Reachable from outside the container, unlike the NixOS default.
+      # Reachable from outside the container, unlike the NixOS default. With
+      # no loopback proxy in front, login throttling keys on the socket peer
+      # and ignores X-Forwarded-For (src/lib/routing.ts clientIp).
       "PORTFOLIO_HOST=0.0.0.0"
       "PORTFOLIO_STATE_DIR=/var/lib/portfolio"
       # Same reason as the NixOS module: V8 sizes its heap against the host,

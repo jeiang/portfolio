@@ -1,4 +1,5 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, scrypt, scryptSync, timingSafeEqual } from "node:crypto";
+import type { ScryptOptions } from "node:crypto";
 
 // 128 * N * r = 16 MiB, comfortably under node's 32 MiB scrypt maxmem.
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 } as const;
@@ -17,7 +18,22 @@ export function hashPassword(password: string): string {
   ].join("$");
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
+/** Promise form of crypto.scrypt; util.promisify drops the options overload's types. */
+function scryptAsync(
+  password: string,
+  salt: Buffer,
+  keylen: number,
+  options: ScryptOptions,
+): Promise<Buffer> {
+  const { promise, resolve, reject } = Promise.withResolvers<Buffer>();
+  scrypt(password, salt, keylen, options, (error, derived) =>
+    error ? reject(error) : resolve(derived),
+  );
+  return promise;
+}
+
+/** Async so a login attempt runs the KDF on the threadpool, not the event loop. */
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = stored.split("$");
   if (parts.length !== 6 || parts[0] !== "scrypt") return false;
 
@@ -32,11 +48,12 @@ export function verifyPassword(password: string, stored: string): boolean {
   const expectedBuf = Buffer.from(expected, "base64");
   if (expectedBuf.length === 0) return false;
 
-  const derived = scryptSync(password, Buffer.from(salt, "base64"), expectedBuf.length, {
-    N: Number(n),
-    r: Number(r),
-    p: Number(p),
-  });
+  const derived = await scryptAsync(
+    password,
+    Buffer.from(salt, "base64"),
+    expectedBuf.length,
+    { N: Number(n), r: Number(r), p: Number(p) },
+  );
 
   return derived.length === expectedBuf.length && timingSafeEqual(derived, expectedBuf);
 }

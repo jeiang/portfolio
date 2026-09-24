@@ -41,6 +41,9 @@ export function destroySession(token: string | undefined): void {
 
 const MAX_FAILURES = 5;
 const LOCKOUT_SECONDS = 15 * 60;
+// Enough for every address that plausibly fails in one lockout window;
+// beyond it the oldest entry goes, so rotating addresses cannot grow memory.
+const MAX_TRACKED = 10_000;
 
 // ponytail: in-process Map, so a restart forgives everyone. Correct for one
 // admin in one process; move it beside the sessions table if this ever runs
@@ -61,6 +64,11 @@ export function recordFailure(ip: string): void {
   const entry = failures.get(ip) ?? { count: 0, until: 0 };
   entry.count += 1;
   entry.until = now() + LOCKOUT_SECONDS;
+  // Re-insert so Map order stays oldest-failure-first for eviction.
+  failures.delete(ip);
+  if (failures.size >= MAX_TRACKED) {
+    failures.delete(failures.keys().next().value!);
+  }
   failures.set(ip, entry);
 }
 
@@ -68,11 +76,14 @@ export function clearFailures(ip: string): void {
   failures.delete(ip);
 }
 
-export function checkCredentials(username: string, password: string): boolean {
+export async function checkCredentials(
+  username: string,
+  password: string,
+): Promise<boolean> {
   const config = getConfig();
   const userMatch = safeEqual(username, config.adminUsername);
   // Run the KDF regardless, so a wrong username is not measurably faster
   // than a wrong password.
-  const passMatch = verifyPassword(password, config.adminPasswordHash);
+  const passMatch = await verifyPassword(password, config.adminPasswordHash);
   return userMatch && passMatch;
 }

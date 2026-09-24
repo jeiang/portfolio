@@ -52,9 +52,15 @@ the value, which is how secrets arrive from sops or systemd's
 | `PORTFOLIO_HOST`                | `127.0.0.1`          |                       |
 | `PORTFOLIO_PORT`                | `4321`               |                       |
 | `PORTFOLIO_STATE_DIR`           | `/var/lib/portfolio` | database and uploads  |
+| `PORTFOLIO_TRUSTED_PROXIES`     | —                    | see below             |
 
 Missing required values are reported by name and the process exits 78 before
 opening a socket.
+
+Login throttling keys on the socket peer. When the peer is loopback, or one
+of the comma-separated addresses in `PORTFOLIO_TRUSTED_PROXIES`, it keys on
+the last `X-Forwarded-For` entry instead. Set it when the reverse proxy runs
+on another machine, or every visitor shares the proxy's lockout.
 
 There is one admin account and no user table. Generate its password hash
 with:

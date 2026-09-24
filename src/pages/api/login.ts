@@ -7,6 +7,7 @@ import {
   isLockedOut,
   recordFailure,
 } from "../../lib/auth.ts";
+import { getConfig } from "../../lib/config.ts";
 import { clientIp } from "../../lib/routing.ts";
 
 /** A username, a password and a path; anything bigger is not a login. */
@@ -32,6 +33,7 @@ export const POST: APIRoute = async (context) => {
   const ip = clientIp(
     context.clientAddress,
     context.request.headers.get("x-forwarded-for"),
+    getConfig().trustedProxies,
   );
   if (isLockedOut(ip)) return context.redirect("/admin/login?locked", 303);
 

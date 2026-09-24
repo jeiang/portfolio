@@ -64,22 +64,29 @@ export function resolveRoute({
   return { kind: "rewrite", path: `/blog${pathname === "/" ? "" : pathname}${search}` };
 }
 
+const unmapped = (address: string): string => address.replace(/^::ffff:(?=\d+\.)/, "");
+
 const isLoopback = (address: string): boolean =>
-  address === "::1" || /^(::ffff:)?127\./.test(address);
+  address === "::1" || address.startsWith("127.");
 
 /**
  * The address to throttle a login by. Normally the socket peer: headers are
  * the client's to choose, and the container image publishes the port with
- * no proxy in front. A loopback peer is the documented reverse proxy on the
- * same machine, and then the last X-Forwarded-For entry is the address it
+ * no proxy in front. A loopback peer, or one listed in `trustedProxies`, is
+ * a reverse proxy, and then the last X-Forwarded-For entry is the address it
  * saw — each proxy appends its peer, so the leftmost values are whatever the
  * client sent.
  */
-export function clientIp(peer: string, forwardedFor: string | null): string {
-  if (!isLoopback(peer)) return peer;
+export function clientIp(
+  peer: string,
+  forwardedFor: string | null,
+  trustedProxies: readonly string[] = [],
+): string {
+  const address = unmapped(peer);
+  if (!isLoopback(address) && !trustedProxies.includes(address)) return address;
   const hops = (forwardedFor ?? "")
     .split(",")
     .map((hop) => hop.trim())
     .filter(Boolean);
-  return hops.at(-1) ?? peer;
+  return hops.at(-1) ?? address;
 }

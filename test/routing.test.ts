@@ -78,3 +78,11 @@ test("client IP is the socket peer unless a loopback proxy forwarded it", () => 
   assert.equal(clientIp("127.0.0.1", null), "127.0.0.1");
   assert.equal(clientIp("127.0.0.1", ""), "127.0.0.1");
 });
+
+test("a listed proxy's X-Forwarded-For is believed; an unlisted peer's is not", () => {
+  const trusted = ["172.17.0.1"];
+  assert.equal(clientIp("172.17.0.1", "1.2.3.4, 203.0.113.9", trusted), "203.0.113.9");
+  assert.equal(clientIp("::ffff:172.17.0.1", "203.0.113.9", trusted), "203.0.113.9");
+  assert.equal(clientIp("172.17.0.2", "203.0.113.9", trusted), "172.17.0.2");
+  assert.equal(clientIp("172.17.0.1", "203.0.113.9"), "172.17.0.1");
+});

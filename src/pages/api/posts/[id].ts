@@ -11,7 +11,15 @@ export const PUT: APIRoute = async ({ params, request }) => {
   const id = parseId(params.id);
   if (id === undefined) return new Response("Not found", { status: 404 });
 
-  const body = (await request.json()) as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return new Response("Expected a JSON object", { status: 400 });
+  }
   const status = body.status === "published" ? "published" : "draft";
 
   const post = await savePost(id, {

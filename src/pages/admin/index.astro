@@ -61,9 +61,11 @@ const LABELS = { draft: "Draft", published: "Published", scheduled: "Scheduled" 
                       View
                     </a>
                   ) : (
-                    <span class="admin-row-action-slot"></span>
+                    <span class="admin-row-action-slot" />
                   )}
-                  <a class="button" href={`/admin/${post.id}`}>Edit</a>
+                  <a class="button" href={`/admin/${post.id}`}>
+                    Edit
+                  </a>
                 </div>
               </div>
             );

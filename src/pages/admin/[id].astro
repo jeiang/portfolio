@@ -50,8 +50,8 @@ const postData = JSON.stringify({
         <span>Slug</span>
         <input type="text" id="slug" value={post.slug} />
         <span class="hint" id="published-hint" hidden={post.status !== "published"}>
-          Published at {blogUrl}/<span id="published-slug">{post.slug}</span> — changing
-          this breaks every existing link to it.
+          Published at {blogUrl}/<span id="published-slug">{post.slug}</span> — changing this
+          breaks every existing link to it.
         </span>
       </label>
 
@@ -105,12 +105,7 @@ const postData = JSON.stringify({
       <textarea id="editor-source" spellcheck="false"></textarea>
     </div>
 
-    <script
-      is:inline
-      type="application/json"
-      id="post-data"
-      set:html={postData}
-    />
+    <script is:inline type="application/json" id="post-data" set:html={postData} />
 
     <script>
       import "../../scripts/editor.ts";

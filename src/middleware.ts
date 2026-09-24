@@ -3,6 +3,22 @@ import { SESSION_COOKIE, validateSession } from "./lib/auth.ts";
 import { getConfig } from "./lib/config.ts";
 import { resolveRoute } from "./lib/routing.ts";
 
+// Post bodies may carry raw HTML (embeds), and the admin shares their origin.
+// Scripts on admin pages are therefore limited to our own bundles; the editor
+// needs inline styles (ProseMirror, CodeMirror) and blob: cover previews.
+const ADMIN_CSP = [
+  "default-src 'self'",
+  "img-src 'self' blob: data:",
+  "style-src 'self' 'unsafe-inline'",
+  "script-src 'self'",
+  "connect-src 'self'",
+  "font-src 'self' data:",
+  "frame-ancestors 'none'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "form-action 'self'",
+].join("; ");
+
 /**
  * One process serves both hostnames. Routes live under src/pages/blog/, and
  * the blog host maps its root onto that subtree, so `blog.example.com/a-post`
@@ -57,5 +73,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  return action.kind === "rewrite" ? next(action.path) : next();
+  const response = await (action.kind === "rewrite" ? next(action.path) : next());
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  // context.url is https only via the proxy's X-Forwarded-Proto; plain http
+  // locally must not pin the browser to TLS.
+  if (context.url.protocol === "https:") {
+    response.headers.set("Strict-Transport-Security", "max-age=31536000");
+  }
+  if (isAdmin) response.headers.set("Content-Security-Policy", ADMIN_CSP);
+  return response;
 });
